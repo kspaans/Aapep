@@ -2,6 +2,7 @@
  * File for simply parsing S-Expressions into C structs
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -35,15 +36,9 @@ enum parse_state {
 
 int sexpr_pprint(struct sexpr *s);
 
-int parse_sexpr(FILE *f, struct atom *current_atom)
+int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state state)
 {
-	enum parse_state state = SBOF;
-	char c = '\0';
-	unsigned idx = 0;
-
 	while (1) {
-	//	printf("P\tLOOP %08d: state = %d\n", idx++, state);
-
 		switch (state) {
 		case SBOF:
 		//	printf("P\tSBOF\n");
@@ -70,20 +65,41 @@ int parse_sexpr(FILE *f, struct atom *current_atom)
 		//	printf("P\tSOPEN\n");
 			current_atom->atom_t = SEXPR;
 			current_atom->contents.sexp = malloc(sizeof(struct sexpr));
-		//	printf("P\tallocated a sexpr at %p\n", current_atom->contents.sexp);
-			current_atom->contents.sexp->first = NULL;
-			current_atom->contents.sexp->rest = NULL;
+		//	printf("P\tallocated a sexpr at           %p\n", current_atom->contents.sexp);
 
-			c = fgetc(f);
-		//	printf("P\tread 0x%02x\n", c);
-			if        (c == ')') {
-				state = SCLOSE;
-			} else if (c == EOF) {
-				state = SERROR;
+			while (isspace(c = fgetc(f))) {}
+			if ('(' == c) {
+				current_atom->contents.sexp->first = malloc(sizeof(struct atom));
+		//		printf("P\tallocated an atom for first at %p\n", current_atom->contents.sexp->first);
+				parse_sexpr(f, current_atom->contents.sexp->first, c, SOPEN);
+			} else if (')' == c) {
+				current_atom->contents.sexp->first = NULL;
+				current_atom->contents.sexp->rest = NULL;
+				return 0;
 			} else {
-				state = SERROR;
+		//		printf("P\tprobably some atom: 0x%02x\n", c);
+				current_atom->contents.sexp->first = NULL;
 			}
-			break;
+
+			while (isspace(c = fgetc(f))) {}
+			if ('(' == c) {
+				current_atom->contents.sexp->rest = malloc(sizeof(struct atom));
+		//		printf("P\tallocated an atom for rest  at %p\n", current_atom->contents.sexp->rest);
+				parse_sexpr(f, current_atom->contents.sexp->rest, c, SOPEN);
+			} else if (')' == c) {
+				current_atom->contents.sexp->rest = NULL;
+				return 0;
+			} else {
+		//		printf("P\tprobably some atom: 0x%02x\n", c);
+				current_atom->contents.sexp->rest = NULL;
+			}
+
+			while (isspace(c = fgetc(f))) {}
+			if (')' != c) {
+				fprintf(stderr, "PARSE ERROR: '%c' (0x%02x)\n", c, c);
+				return 1;
+			}
+			return 0;
 
 		case SCLOSE:
 		//	printf("P\tSCLOSE\n");
@@ -147,7 +163,7 @@ int main(int argc, char **argv)
 
 	f = fopen(argv[1], "r");
 
-	retval = parse_sexpr(f, &a);
+	retval = parse_sexpr(f, &a, '\0', SBOF);
 	s = a.contents.sexp;
 	//while (s) {
 	//	printf("(");

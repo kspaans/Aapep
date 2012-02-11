@@ -1,4 +1,5 @@
-[_] Pretty printing of sexprs for quick verification
+[X] Pretty printing of sexprs for quick verification
+[X] Parenthesis matching and cons'ing
 [_] basic atom (numbers, string, symbols) lexing
 [_] ???
 [_] PROFIT
