@@ -16,12 +16,14 @@ struct sexpr {
 enum atom_type {
 	EMPTY,
 	SEXPR,
+	NUM,
 };
 
 struct atom {
 	enum atom_type atom_t;
 	union contents {
 		struct sexpr *sexp;
+		int num;
 	} contents;
 };
 
@@ -34,15 +36,44 @@ enum parse_state {
 
 };
 
-int sexpr_pprint(struct sexpr *s);
+struct atom *lex_atom(FILE *f, unsigned c)
+{
+	struct atom *a;
+	char num[11] = {};
+	unsigned i = 0;
+
+	if (isdigit(c)) {
+		num[i] = c;
+		i += 1;
+		while (isdigit(c = fgetc(f))) {
+			num[i] = c;
+			i += 1;
+		}
+		if (11 == i) {
+			fprintf(stderr, "ERROR: overflow\n");
+		}
+		num[10] = '\0';
+
+		a = malloc(sizeof(*a));
+		a->atom_t = NUM;
+		a->contents.num = atoi(num);
+	} else {
+		fprintf(stderr, "ERROR: invalid char in atom.\n");
+		return NULL;
+	}
+
+	return a;
+}
 
 int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state state)
 {
+	struct atom *new_atom;
+
 	while (1) {
 		switch (state) {
 		case SBOF:
 		//	printf("P\tSBOF\n");
-			c = fgetc(f);
+			while (isspace(c = fgetc(f))) {}
 		//	printf("P\tread 0x%02x\n", c);
 			if        (c == '(') {
 				state = SOPEN;
@@ -55,10 +86,6 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 
 		case SERROR:
 		//	printf("P\tSERROR\n");
-			return 1;
-
-		case SEOF:
-		//	printf("P\tSEOF\n");
 			return 1;
 
 		case SOPEN:
@@ -77,8 +104,13 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 				current_atom->contents.sexp->rest = NULL;
 				return 0;
 			} else {
-		//		printf("P\tprobably some atom: 0x%02x\n", c);
-				current_atom->contents.sexp->first = NULL;
+		//		printf("P\tFprobably some atom: 0x%02x\n", c);
+				new_atom = lex_atom(f, c);
+					current_atom->contents.sexp->first = new_atom;
+				if (NULL != new_atom) {
+				} else {
+					fprintf(stderr, "Skipping atom, will continue parsing.\n");
+				}
 			}
 
 			while (isspace(c = fgetc(f))) {}
@@ -90,7 +122,7 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 				current_atom->contents.sexp->rest = NULL;
 				return 0;
 			} else {
-		//		printf("P\tprobably some atom: 0x%02x\n", c);
+		//		printf("P\tRprobably some atom: 0x%02x\n", c);
 				current_atom->contents.sexp->rest = NULL;
 			}
 
@@ -101,10 +133,6 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 			}
 			return 0;
 
-		case SCLOSE:
-		//	printf("P\tSCLOSE\n");
-			return 0;
-
 		default:
 			goto done;
 		};
@@ -113,6 +141,8 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 
 	return 0;
 }
+
+int sexpr_pprint(struct sexpr *s);
 
 int atom_pprint(struct atom *a)
 {
@@ -127,6 +157,10 @@ int atom_pprint(struct atom *a)
 
 	case SEXPR:
 		sexpr_pprint(a->contents.sexp);
+		break;
+
+	case NUM:
+		printf("%d", a->contents.num);
 		break;
 
 	default:
