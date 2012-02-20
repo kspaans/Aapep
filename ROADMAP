@@ -1,5 +1,7 @@
 [X] Pretty printing of sexprs for quick verification
 [X] Parenthesis matching and cons'ing
-[_] basic atom (numbers, string, symbols) lexing
+[X] basic atom (numbers, strings, symbols, booleans) lexing
+[X] lex "names"
+[_] allow arbitrarily long lists without explicit cons'ing: (1 2 3 4 5)
 [_] ???
 [_] PROFIT

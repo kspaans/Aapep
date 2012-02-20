@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MAX_NAME_LEN    32
+#define MAX_SYMBOL_LEN  32
+#define MAX_STRING_LEN 256
+
 struct atom;
 
 struct sexpr {
@@ -17,13 +21,19 @@ enum atom_type {
 	EMPTY,
 	SEXPR,
 	NUM,
+	SYMBOL,
+	STRING,
+	NAME,   /* Must not start with a number, ', or ". */
 };
 
 struct atom {
 	enum atom_type atom_t;
 	union contents {
 		struct sexpr *sexp;
-		int num;
+		int           num;
+		const char   *symb;
+		char         *str;
+		const char   *name;
 	} contents;
 };
 
@@ -36,10 +46,52 @@ enum parse_state {
 
 };
 
-struct atom *lex_atom(FILE *f, unsigned c)
+/*
+ * Names have enough exceptions that they are worth their own function, namely
+ * being able to include operators and special built-ins.
+ */
+struct atom *parse_name(FILE *f, unsigned c)
 {
 	struct atom *a;
+	char *name;
+	int i = 0;
+
+	name = malloc(MAX_NAME_LEN);
+	name[i] = c;
+	i += 1;
+	while (1) {
+		c = fgetc(f);
+		if (EOF == c) {
+			return NULL;
+		} else if ('(' == c || ')' == c) {
+			fprintf(stderr, "ERROR: read parenthesis in name.");
+			return NULL;
+		} else if (isspace(c)) {
+			name[i] = '\0';
+			break;
+		} else {
+			name[i] = c;
+			i += 1;
+		}
+
+		if (MAX_NAME_LEN == i) {
+			name[i - 1] = '\0';
+			break;
+		}
+	}
+
+	a = malloc(sizeof(*a));
+	a->atom_t = NAME;
+	a->contents.name = name;
+
+	return a;
+}
+
+struct atom *lex_atom(FILE *f, unsigned c)
+{
 	char num[11] = {};
+	struct atom *a;
+	char *s;           /* bytestring for strings, symbols, etc... */
 	unsigned i = 0;
 
 	if (isdigit(c)) {
@@ -57,9 +109,43 @@ struct atom *lex_atom(FILE *f, unsigned c)
 		a = malloc(sizeof(*a));
 		a->atom_t = NUM;
 		a->contents.num = atoi(num);
+	} else if ('\'' == c) {
+		s = malloc(MAX_SYMBOL_LEN);
+		while (!isspace(c = fgetc(f))) {
+			s[i] = c;
+			i += 1;
+			if (MAX_SYMBOL_LEN == i) {
+				s[i - 1] = '\0';
+				fprintf(stderr, "ERROR: symbol too long.\n");
+				break;
+			}
+		}
+
+		a = malloc(sizeof(*a));
+		a->atom_t = SYMBOL;
+		a->contents.symb = s;
+	} else if ('\"' == c) {
+		s = malloc(MAX_STRING_LEN);
+		while ('\"' != (c = fgetc(f))) {
+			if (EOF == c) {
+				fprintf(stderr,
+					"ERROR: unterminated string.\n");
+				return NULL;
+			}
+			s[i] = c;
+			i += 1;
+			if (MAX_STRING_LEN == i) {
+				s[i - 1] = '\0';
+				fprintf(stderr, "ERROR: string too long.\n");
+				break;
+			}
+		}
+
+		a = malloc(sizeof(*a));
+		a->atom_t = STRING;
+		a->contents.str = s;
 	} else {
-		fprintf(stderr, "ERROR: invalid char in atom.\n");
-		return NULL;
+		a = parse_name(f, c);
 	}
 
 	return a;
@@ -163,6 +249,18 @@ int atom_pprint(struct atom *a)
 		printf("%d", a->contents.num);
 		break;
 
+	case SYMBOL:
+		printf("\'%s", a->contents.symb);
+		break;
+
+	case STRING:
+		printf("\"%s\"", a->contents.str);
+		break;
+
+	case NAME:
+		printf("%s", a->contents.name);
+		break;
+
 	default:
 		fprintf(stderr, "WOAH, WHAT?!\n");
 		abort();
@@ -189,7 +287,6 @@ int sexpr_pprint(struct sexpr *s)
 int main(int argc, char **argv)
 {
 	struct atom a;
-	struct sexpr *s;
 	FILE *f;
 	int retval;
 
@@ -198,7 +295,6 @@ int main(int argc, char **argv)
 	f = fopen(argv[1], "r");
 
 	retval = parse_sexpr(f, &a, '\0', SBOF);
-	s = a.contents.sexp;
 	//while (s) {
 	//	printf("(");
 	//}
