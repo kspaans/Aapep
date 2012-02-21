@@ -1,6 +1,8 @@
 #ifndef __SEXPR_PARSE_H__
 #define __SEXPR_PARSE_H__
 
+#include <stdio.h>
+
 #define MAX_NAME_LEN    32
 #define MAX_SYMBOL_LEN  32
 #define MAX_STRING_LEN 256
@@ -40,5 +42,8 @@ enum parse_state {
 	SCLOSE,
 
 };
+
+extern int atom_pprint(struct atom *a);
+extern int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state state);
 
 #endif

@@ -6,13 +6,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "sexpr_parse.h"
-#include "hash.h"
 
 /*
  * Names have enough exceptions that they are worth their own function, namely
  * being able to include operators and special built-ins.
  */
-struct atom *parse_name(FILE *f, unsigned c)
+static struct atom *parse_name(FILE *f, unsigned c)
 {
 	struct atom *a;
 	char *name;
@@ -49,7 +48,7 @@ struct atom *parse_name(FILE *f, unsigned c)
 	return a;
 }
 
-struct atom *lex_atom(FILE *f, unsigned c)
+static struct atom *lex_atom(FILE *f, unsigned c)
 {
 	char num[11] = {};
 	struct atom *a;
@@ -190,7 +189,20 @@ int parse_sexpr(FILE *f, struct atom *current_atom, unsigned c, enum parse_state
 	return 0;
 }
 
-int sexpr_pprint(struct sexpr *s);
+static int sexpr_pprint(struct sexpr *s)
+{
+	if (NULL == s) {
+		return 0;
+	}
+
+	printf("(");
+	atom_pprint(s->first);
+	printf(" ");
+	atom_pprint(s->rest);
+	printf(")");
+
+	return 0;
+}
 
 int atom_pprint(struct atom *a)
 {
@@ -229,53 +241,4 @@ int atom_pprint(struct atom *a)
 	}
 
 	return 0;
-}
-
-int sexpr_pprint(struct sexpr *s)
-{
-	if (NULL == s) {
-		return 0;
-	}
-
-	printf("(");
-	atom_pprint(s->first);
-	printf(" ");
-	atom_pprint(s->rest);
-	printf(")");
-
-	return 0;
-}
-
-int main(int argc, char **argv)
-{
-	struct atom a;
-	FILE *f;
-	int retval;
-
-	if (argc != 2) return 1;
-
-	f = fopen(argv[1], "r");
-
-	retval = parse_sexpr(f, &a, '\0', SBOF);
-	//while (s) {
-	//	printf("(");
-	//}
-
-//	/*
-	#if 0
-	printf("atom a at location          %p\n", &a);
-	printf("a.atom_t at location        %p\n", &a.atom_t);
-	printf("a.contents at location      %p\n", &a.contents);
-	printf("a.contents.sexp at location %p\n", &a.contents.sexp);
-	printf("a.contents.sexp points to   %p\n", a.contents.sexp);
-	if (!a.contents.sexp) return retval;
-	printf("a.contents.sexp.first " "   %p\n", a.contents.sexp->first);
-	printf("a.contents.sexp.rest  " "   %p\n", a.contents.sexp->rest);
-	#endif
-//	*/
-
-	atom_pprint(&a);
-	printf("\n");
-
-	return retval;
 }
