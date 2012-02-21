@@ -2,6 +2,9 @@
 [X] Parenthesis matching and cons'ing
 [X] basic atom (numbers, strings, symbols, booleans) lexing
 [X] lex "names"
+[_] have a symbol table
+[_] poplate symbol table with built-ins (arithmetic)
+[_] poplate symbol table with built-ins (...)
 [_] allow arbitrarily long lists without explicit cons'ing: (1 2 3 4 5)
 [_] ???
 [_] PROFIT
