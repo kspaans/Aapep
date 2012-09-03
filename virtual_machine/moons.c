@@ -22,33 +22,35 @@ enum err_t decode_and_run(struct machine_state *m, char *filename)
 	f = fopen(filename, "r");
 	/* TODO check return value */
 
-	err = fread(&instr, 4, 1, f);
-	if (1 != err) {
-		printf("ERROR: fread returned %d, expected 1\n", err);
-		return INPUT_ERROR;
-	}
-
-	printf("read   %08X\n", instr);
-	op = GET_OPCODE(instr);
-	printf("opcode %08X\n", op);
-	switch (op) {
-	case OP_ADD:
-		ierr = add(m, GET_SRC1(instr), GET_SRC2(instr), GET_DST(instr));
-		if (OK != ierr) {
-			return ierr;
+	while (1) {
+		err = fread(&instr, 4, 1, f);
+		if (1 != err) {
+			printf("ERROR: fread returned %d, expected 1\n", err);
+			return INPUT_ERROR;
 		}
-		break;
 
-	case OP_ADD_IMM:
-		ierr = addi(m, GET_SRC1(instr), GET_IMM(instr));
-		if (OK != ierr) {
-			return ierr;
+		printf("read   %08X\n", instr);
+		op = GET_OPCODE(instr);
+		printf("opcode %08X\n", op);
+		switch (op) {
+		case OP_ADD:
+			ierr = add(m, GET_SRC1(instr), GET_SRC2(instr), GET_DST(instr));
+			if (OK != ierr) {
+				return ierr;
+			}
+			break;
+
+		case OP_ADD_IMM:
+			ierr = addi(m, GET_SRC1(instr), GET_IMM(instr));
+			if (OK != ierr) {
+				return ierr;
+			}
+			break;
+
+		default:
+			printf("ERROR: invalid opcode: 0x%08X\n", op);
+			return INVALID_INSTRUCTION;
 		}
-		break;
-
-	default:
-		printf("ERROR: invalid opcode: 0x%08X\n", op);
-		return INVALID_INSTRUCTION;
 	}
 
 	return OK;
