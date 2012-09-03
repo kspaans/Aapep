@@ -1,7 +1,7 @@
 #!/bin/sh
 
 TESTDIR="tests"
-EXE="a.out"
+EXE="sexpr_test"
 
 echo "Running tests..."
 

@@ -1,0 +1,1 @@
+Use `xxd -r -p NUM_test.hex NUM_test.bin` to turn the hex files into binary files

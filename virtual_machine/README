@@ -1,0 +1,10 @@
+THE MOONS VIRTUAL MACHINE
+
+AKA, the virtual machine that Aapep will target.
+
+DESCRIPTION
+32 registers, valid addresses start at 0x1000, one cycle per instruction
+
+INSTRUCTION FORMAT
+32-bit instructions, 3 register operands, or an immediate
+Immediate instructions take one register and have a 22-bit immediate
